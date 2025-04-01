@@ -24,7 +24,7 @@ Before the data is analysed by GSVA, a few things need to be as per the [GSVA's 
 
 ## Sjogren data
  
-To do this, we reead the count data and turn the identifiers into valid ENSEMBL identifiers. Along with this, we 
+To do this, we read the count data and turn the identifiers into valid ENSEMBL identifiers. Along with this, we 
 read the meta data for this dataset. 
 ```{r message = FALSE}
 phenotype_data <- read.csv(".\\data\\group_to_id.csv")
