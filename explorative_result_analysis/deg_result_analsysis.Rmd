@@ -1,0 +1,155 @@
+```{r}
+knitr::opts_chunk$set(warning = FALSE, echo = TRUE)
+```
+
+```{r}
+library("DESeq2")
+library("ggplot2")
+library("factoextra")
+library("ggfortify")
+```
+
+To explore the DEG analysis results further, we look to do an analsysis on our own consisting of a PCA and clustering. 
+The PCA will be a good way to look at the variance of gene expression between the samples, and with the clustering we can look
+to compare this to the clustering results in the pathway analysis. 
+
+To do the analysis, we first load in the data and clean it up. To prepare for DESeq2 analsysis. We do the
+following:
+
+- Set the rownames to the gene IDs
+- Remove the genes that have zero counts
+- Remove the genes where 75% of the samples have no counts
+
+```{r}
+raw_counts <- read.csv(".\\data\\merged_outrider_counts.txt", sep = "\t")
+phenotype_data <- read.csv(".\\data\\group_to_id.csv")
+
+row.names(raw_counts) <- raw_counts$GeneID
+
+raw_counts <- raw_counts[-c(1)]
+
+# Remove zero count rows
+raw_counts <- raw_counts[rowSums(raw_counts) > 0, ]
+# # Remove genes where 75% of the samples have zero counts found
+raw_counts <- raw_counts[rowMeans(raw_counts == 0) <= 0.75, ]
+
+row.names(phenotype_data) <- phenotype_data$ID
+phenotype_data$group <- as.factor(phenotype_data$group)
+```
+
+After that we can construct a deseq2 object.
+
+```{r}
+# Construct dds object
+dds <- DESeqDataSetFromMatrix(countData = raw_counts,
+                              colData = phenotype_data,
+                              design = ~ group)
+```
+
+
+DEseq does some normalisation for us. It does the following:
+- It estimates the size factors so that samples with different sequencings depths can be compared.
+- It estimates dispersion, giving an estimation of how scattered the data is
+- Negative binomial GLM fitting, and tests whether there's difference between control and patients with Sjogren
+
+Here, as we are looking for differences between groups rather than between samples, this type of normalisation is prefered to
+the OUTRIDER normalisation, as OUTRIDER normalisation is done so that outliers are still notable.
+```{r}
+# run DEseq
+dds <- DESeq(dds)
+res <- results(dds)
+
+sig_res <- as.data.frame(res[which(res$padj < 0.05 &
+                                   abs(res$log2FoldChange) > 1), ])
+```
+
+For PCA of these results, we follow DESeq2 guidelines and perform a variance stabilising transformation. This will make
+sure the counts are homoscedastic, that is when the variance is constant instead of being higher when counts are higher.
+
+The parameter 'blind' is set to TRUE so that information about the groups is not used in this transformation.
+```{r}
+vsd_blind <- vst(dds, blind = TRUE)
+```
+
+We now run the PCA, but as we have many genes, we only run a PCA with a thousand genes. These genes are the genes that
+have the most variance. After that, a PCA is ran with R's prcomp function and is plotted.
+
+```{r}
+# Get variance per rows
+rv <- rowVars(assay(vsd_blind))
+# Select the genes that are in the variance top 1000
+select <- order(rv, decreasing = TRUE)[seq_len(min(1000, length(rv)))]
+# Run PCA with the selected samples
+pca_res_blind <- prcomp(t(assay(vsd_blind)[select, ]))
+```
+
+A thousand genes will create quite a few loadings, and so we choose to only display the top 20 loadings for visibility's sake.
+
+```{r}
+contribution_object <- fviz_contrib(pca_res_blind,
+                                    choice = "var", axes = 1:2, top = 20)
+
+contributions <- contribution_object$data
+
+top_contrib <- rownames(contributions[order(contributions$contrib,
+                                            decreasing = TRUE), ][1:20, ])
+```
+
+Finally, we can plot the results of the PCA and add the loadings. When interpreting this plot, keep in mind we only took
+the 1000 genes that had the most variance into account. This means the genes that did not show much variantion, but that could play a 
+role in differentiating sjogren from control patients could have been ignored. However, as we did do a differential expression analysis as
+well, these genes will come through there.
+
+```{r, fig.cap = "A PCA plot, the first component on the x-axis and the second component on the y-axis. There's a seperation between the sjogren (blue) samples and the control (pink) samples, though not all samples are equally seperated."}
+loadings <- pca_res_blind$rotation[top_contrib, 1:2]
+
+autoplot(pca_res_blind, data = phenotype_data,
+         col = "group", label.label = "ID", label = TRUE) +
+  geom_segment(data = loadings, aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.1, "in")),
+               col = "brown") +
+  geom_text(data = loadings, aes(x = PC1, y = PC2, label = top_contrib),
+            nudge_y = 0.001, size = 3) +
+  scale_x_continuous(expand = c(0.02, 0.02))
+```
+
+As expected, since the PCA does not take different groups into account, there are a few genes that have quite some
+variance between samples but are not expressed differently in a signficant way between sjogren and control samples.
+As these genes do still effect the data, it may still be worth looking at the genes. 
+
+```{r}
+normalized_counts <- as.data.frame(assay(vsd_blind))
+sig_gene_names <- row.names(sig_res)
+significant_counts <- normalized_counts[sig_gene_names, ]
+```
+
+For another visualisiton, a heatmap is created. As there many counted genes, we only create a heatmap using the significantly
+expressed genes. We can then see how the samples cluster together based on the expression of the genes. We except to see to see the same 
+pattern we find in the pathway analysis, a few controls clustering together very well but remaining controls mixing in with the sjogren samples.
+
+We use the same clustering method used in the gsva analysis.
+
+```{r, fig.dim = c(6, 8)}
+clust_obj <- hclust(dist(t(significant_counts)), method = "average")
+plot(clust_obj)
+```
+
+```{r}
+count_matrix <- as.matrix(significant_counts)
+phenotype_data$colour <- "#008B33"
+phenotype_data$colour[phenotype_data$group == "sjogren"] <- "#e4a22f"
+col <- colorRampPalette(c("#005AB5", "white", "#DC3220"))(256)
+
+heatmap(count_matrix, ColSideColors = phenotype_data$colour,
+        col = col, cexRow = 0.5, Colv = as.dendrogram(clust_obj))
+legend(x = "topright", legend = c("control", "sjogren"),
+       fill = c("#008B33", "#e4a22f"))
+```
+
+First, in the heatmap, two sjogren samples split off at the very start. These samples appear to have genes 
+that are very strongly upregulated. After these two samples have split off, we find a that one group of sjogren samples
+split off rather well, but others mix more with the control.
+
+```{r}
+View(sig_res[top_contrib,])
+```
