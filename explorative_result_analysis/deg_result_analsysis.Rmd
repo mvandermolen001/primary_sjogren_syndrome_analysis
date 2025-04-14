@@ -21,7 +21,8 @@ following:
 - Remove the genes where 75% of the samples have no counts
 
 ```{r}
-raw_counts <- read.csv(".\\data\\merged_outrider_counts.txt", sep = "\t")
+raw_counts <- read.csv(".\\data\\count_data\\merged_outrider_counts.txt",
+                       sep = "\t")
 phenotype_data <- read.csv(".\\data\\group_to_id.csv")
 
 row.names(raw_counts) <- raw_counts$GeneID
@@ -150,6 +151,38 @@ First, in the heatmap, two sjogren samples split off at the very start. These sa
 that are very strongly upregulated. After these two samples have split off, we find a that one group of sjogren samples
 split off rather well, but others mix more with the control.
 
+## Finding potentially interesting genes
+
+To find potentially interesting genes, we can look at the top contributing genes and the significantly expressed genes.
+The idea behind this being PCA, being explorative, can give is a guide for which genes may be interesting. They help explain
+a certain amount of variance seen in the data.
+
+From the top 20 contributing genes in the PCA, 14 of them are also significantly different between sjogren and control
+samples.
+
 ```{r}
-View(sig_res[top_contrib,])
+contributing_res <- sig_res[top_contrib, ]
+sum(complete.cases(contributing_res))
+```
+
+Another source of information can be finding variants in the found genes. We have the VIP results, and thus let's look 
+at how many of theses genes have variants associated with them. As VIP uses HGNC symbols, we convert our found genes 
+symbols from ENSEMBL to HGNC. 
+
+```{r}
+gene_ids <- sub("\\..*", "", top_contrib)
+hgnc_contrib <- bitr(gene_ids,
+                     fromType = "ENSEMBL",
+                     toType = "SYMBOL",
+                     OrgDb = "org.Hs.eg.db")
+```
+
+One of the genes is not related to a HGNC symbol, a quick search of this IDs finds that this gene is a pseudo gene and 
+is related to PRKY.
+
+Only one gene that is found in the signifcant genes and is in the top contributing genes, also has a found variant. The
+SIGLEC1 gene with two found variants in sample J26. This gene is not found in any signifcantly expressed pathways.
+```{r}
+vip_result <- read.csv(".\\data\\merged_all_variants.csv")
+vip_contrib <- vip_result[vip_result$HGNC_SYMBOL %in% hgnc_contrib$SYMBOL, ]
 ```
