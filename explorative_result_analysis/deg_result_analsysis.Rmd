@@ -196,4 +196,10 @@ associated with assessment of type I interferon activity. This gene is known to 
 with a subtype that [indicates extraglandular manifestations](https://rmdopen.bmj.com/content/2/2/e000292).
 
 From the remaining 13 genes, they all appear to be related to interferons. This relation can be either being induced 
-or stimulated by interferons.
+or stimulated by interferons. Interferons are well-known to have [a role in Sjogren's disease](https://pmc.ncbi.nlm.nih.gov/articles/PMC7916411/).
+
+IFI44L, IFIT1, and IFIT3 are known to be regulated by type 1 interferons. However, we don't find  any variants in these 
+genes. Methylation of the area might help explain the differences we see in expression. We can not confirm this, as 
+it is out the scope of this research, but we can point to the [following study](https://www.nature.com/articles/s41598-021-01324-0).
+The study shows that Sjogren associated differential methylated positions can be found within these genes. We find several
+other genes in this study that are showing up in our analysis as well. Amongst them are MX1, CMPK2, LY6E, HERC5, and RSAD2.
