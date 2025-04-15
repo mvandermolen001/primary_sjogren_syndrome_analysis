@@ -7,18 +7,9 @@ library("DESeq2")
 library("ggplot2")
 library("factoextra")
 library("ggfortify")
+library("org.Hs.eg.db")
+library("clusterProfiler")
 ```
-
-To explore the DEG analysis results further, we look to do an analsysis on our own consisting of a PCA and clustering. 
-The PCA will be a good way to look at the variance of gene expression between the samples, and with the clustering we can look
-to compare this to the clustering results in the pathway analysis. 
-
-To do the analysis, we first load in the data and clean it up. To prepare for DESeq2 analsysis. We do the
-following:
-
-- Set the rownames to the gene IDs
-- Remove the genes that have zero counts
-- Remove the genes where 75% of the samples have no counts
 
 ```{r}
 raw_counts <- read.csv(".\\data\\count_data\\merged_outrider_counts.txt",
@@ -37,8 +28,6 @@ raw_counts <- raw_counts[rowMeans(raw_counts == 0) <= 0.75, ]
 row.names(phenotype_data) <- phenotype_data$ID
 phenotype_data$group <- as.factor(phenotype_data$group)
 ```
-
-After that we can construct a deseq2 object.
 
 ```{r}
 # Construct dds object
@@ -60,9 +49,11 @@ the OUTRIDER normalisation, as OUTRIDER normalisation is done so that outliers a
 dds <- DESeq(dds)
 res <- results(dds)
 
-sig_res <- as.data.frame(res[which(res$padj < 0.05 &
-                                   abs(res$log2FoldChange) > 1), ])
+sig_res <- as.data.frame(res[which(res$padj <= 0.05 &
+                                     abs(res$log2FoldChange) > 1), ])
 ```
+
+## PCA
 
 For PCA of these results, we follow DESeq2 guidelines and perform a variance stabilising transformation. This will make
 sure the counts are homoscedastic, that is when the variance is constant instead of being higher when counts are higher.
@@ -116,7 +107,7 @@ autoplot(pca_res_blind, data = phenotype_data,
 
 As expected, since the PCA does not take different groups into account, there are a few genes that have quite some
 variance between samples but are not expressed differently in a signficant way between sjogren and control samples.
-As these genes do still effect the data, it may still be worth looking at the genes. 
+As these genes do still effect the data, they could be batch effects and thus still have an interesting effect on the data.
 
 ```{r}
 normalized_counts <- as.data.frame(assay(vsd_blind))
@@ -124,7 +115,9 @@ sig_gene_names <- row.names(sig_res)
 significant_counts <- normalized_counts[sig_gene_names, ]
 ```
 
-For another visualisiton, a heatmap is created. As there many counted genes, we only create a heatmap using the significantly
+## Heatmap
+
+For another visualisiton, simply to explore the data, a heatmap is created. As there many counted genes, we only create a heatmap using the significantly
 expressed genes. We can then see how the samples cluster together based on the expression of the genes. We except to see to see the same 
 pattern we find in the pathway analysis, a few controls clustering together very well but remaining controls mixing in with the sjogren samples.
 
@@ -142,7 +135,7 @@ phenotype_data$colour[phenotype_data$group == "sjogren"] <- "#e4a22f"
 col <- colorRampPalette(c("#005AB5", "white", "#DC3220"))(256)
 
 heatmap(count_matrix, ColSideColors = phenotype_data$colour,
-        col = col, cexRow = 0.5, Colv = as.dendrogram(clust_obj))
+        col = col, cexRow = 1, Colv = as.dendrogram(clust_obj))
 legend(x = "topright", legend = c("control", "sjogren"),
        fill = c("#008B33", "#e4a22f"))
 ```
@@ -154,8 +147,8 @@ split off rather well, but others mix more with the control.
 ## Finding potentially interesting genes
 
 To find potentially interesting genes, we can look at the top contributing genes and the significantly expressed genes.
-The idea behind this being PCA, being explorative, can give is a guide for which genes may be interesting. They help explain
-a certain amount of variance seen in the data.
+We already noted how some of the top contributing genes are not signifcatly different between groups but they could 
+help explain batch effects which are also interesting to take into consideration.
 
 From the top 20 contributing genes in the PCA, 14 of them are also significantly different between sjogren and control
 samples.
@@ -164,6 +157,16 @@ samples.
 contributing_res <- sig_res[top_contrib, ]
 sum(complete.cases(contributing_res))
 ```
+
+The remaining 6 are not different between the groups, so let's take a look at them to see what these genes are about.
+Searching information on OMIM, we find the following:
+
+- Five out of the six genes that are either X-linked or Y-linked.
+- The gene that is not linked to either the X or Y chromosomes, MX1, is linked to a protein that combats viral infections.
+
+MX1 has been studied in relation to Sjogren's disease, and there is believe that it is associated with the disease. However, 
+it is also seen in patients with other auto immune disease. As the controls are not healthy individuals and are instead taken from
+the immunology department of the UMCG, this could be a reason it did not show up as significant. 
 
 Another source of information can be finding variants in the found genes. We have the VIP results, and thus let's look 
 at how many of theses genes have variants associated with them. As VIP uses HGNC symbols, we convert our found genes 
@@ -180,9 +183,17 @@ hgnc_contrib <- bitr(gene_ids,
 One of the genes is not related to a HGNC symbol, a quick search of this IDs finds that this gene is a pseudo gene and 
 is related to PRKY.
 
-Only one gene that is found in the signifcant genes and is in the top contributing genes, also has a found variant. The
-SIGLEC1 gene with two found variants in sample J26. This gene is not found in any signifcantly expressed pathways.
+Following that, we can connect the two results using the following code:
+
 ```{r}
 vip_result <- read.csv(".\\data\\merged_all_variants.csv")
 vip_contrib <- vip_result[vip_result$HGNC_SYMBOL %in% hgnc_contrib$SYMBOL, ]
 ```
+
+Only one gene that is found in the signifcant genes and is in the top contributing genes, also has a found variant. The
+SIGLEC1 gene with two found variants in sample J26. This gene is not found in any signifcantly expressed pathways. It is 
+associated with assessment of type I interferon activity. This gene is known to be associated with Sjogren's disease, specifically
+with a subtype that [indicates extraglandular manifestations](https://rmdopen.bmj.com/content/2/2/e000292).
+
+From the remaining 13 genes, they all appear to be related to interferons. This relation can be either being induced 
+or stimulated by interferons.
