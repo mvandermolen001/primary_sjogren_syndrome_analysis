@@ -1,0 +1,118 @@
+```{r}
+knitr::opts_chunk$set(warning = FALSE, echo = TRUE)
+```
+
+```{r, message = FALSE, echo = FALSE}
+library("rpart")
+library("rpart.plot")
+library("caret")
+library("ggfortify")
+library("factoextra")
+```
+
+# Pathway result exploration
+
+To further visualise the results of the pathway analysis, we run a Principal Component Analysis(PCA). This allows us to 
+see where the samples lay within the data space and how the different pathways effect the position of the samples.
+
+We can look at a PCA in two ways. We can look at all the found pathways, or we can look at the pathways that were significantly different between
+the control and the sjogren samples. The first option is highly dimensional, as over 900 pathways were found. The second option risks
+being too simplified, where we risk missing key components. Therefor we can look at both options.
+
+We import the information gathered by the GSVA pathway analysis.
+
+```{r}
+gsva_pathway_scores <- read.csv(".\\data\\pathway_data\\pathway_matrix_result.csv",
+                                row.names = 1)
+gsva_pathway_scores_sig <- read.csv(".\\data\\pathway_data\\sig_found_pathways.csv",
+                                    row.names = 1)
+phenotype_data <- read.csv(".\\data\\group_to_id.csv")
+```
+
+As PCA looks at the variance, highly correlated pathways will mean that one of those pathways doesn't bring new
+information into the PCA. We therefor choose to remove highly correlated pathways (>=0.95).
+
+```{r}
+gsva_matrix <- t(gsva_pathway_scores)
+corr_matrix <- cor(gsva_matrix)
+
+correlated_values <- findCorrelation(corr_matrix, cutoff = 0.95)
+
+dim(gsva_matrix)
+gsva_df <- as.data.frame(gsva_matrix[, -correlated_values])
+dim(gsva_df)
+```
+
+To run the PCA itself, we center the data but we do not scale it as the data is already scaled for us. As the
+screeplot shows, we see the first component captures around 30% of the variance. Together with the second component,
+around 40% of the variance is captured. To capture 100% of the variance, 46 components are needed. This is to be expected as we only have 47 
+samples in total. Around the 6th component, we capture around 60% of the variance and we see the amount of variance captured after that
+gets quite small.
+
+```{r}
+# We do not use scale as data is already similar in scale
+# This prevents loss of information
+res_pca_all_pathways <- prcomp(gsva_matrix, scale = FALSE, center = TRUE)
+summary(res_pca_all_pathways)
+fviz_eig(res_pca_all_pathways, col.var = "darkblue", ncp = 46)
+```
+
+We gather the top contributing pathways to use as loadings in the PCA plot later on.
+
+```{r}
+res_contrib <- get_pca_var(res_pca_all_pathways)$contrib
+
+contribution_object <- fviz_contrib(res_pca_all_pathways,
+                                    choice = "var", axes = 1:2, top = 10)
+
+contributions <- contribution_object$data
+
+top_contrib <- rownames(contributions[order(contributions$contrib,
+                                            decreasing = TRUE), ][1:10, ])
+```
+
+When we plot the PCA, we see very little seperation from control to sjogren. This is likely because we are looking much at total 
+variance, not so much the variance across the different groups. This means batch effects may play a greater role in these results.
+
+```{r, fig.dim = c(8, 6)}
+loadings <- res_pca_all_pathways$rotation[top_contrib, 1:2]
+
+autoplot(res_pca_all_pathways, data = phenotype_data
+         , label = TRUE, label.label = "ID",
+         label.colour = "group") +
+    geom_segment(data = loadings, aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.1, "in")),
+               col = "brown") +
+  geom_text(data = loadings, aes(x = PC1, y = PC2, label = gsub("\\%.*", "", top_contrib)),
+            nudge_y = 0.001, size = 3) +
+  scale_x_continuous(expand = c(0.02, 0.02))
+```
+
+For a similar look into the data, we can choose results that were filtered on significance already. This leaves
+a lot of details behind but it will give a good visualistion to go along with the heatmap created in the gsva
+analysis.
+
+```{r, fig.dim = c(8, 6)}
+gsva_matrix <- t(gsva_pathway_scores_sig)
+corr_matrix <- cor(gsva_matrix)
+
+correlated_values <- findCorrelation(corr_matrix, cutoff = 0.95)
+
+gsva_df <- as.data.frame(gsva_matrix[, -correlated_values])
+
+clust_obj <- hclust(dist(gsva_matrix), method = "average")
+
+cluster_groups <- cutree(clust_obj, k = 2)
+phenotype_data$cluster_id <- as.factor(cluster_groups)
+
+res_pca_sig_pathways <- prcomp(gsva_matrix, scale = FALSE, center = TRUE)
+
+autoplot(res_pca_sig_pathways, data = phenotype_data, 
+         label = TRUE, label.label = "ID",
+         label.colour = "group", loadings = TRUE, loadings.label = TRUE)
+```
+
+As expected, we see a better seperation of control and sjogren samples, but there remain samples that aren't able
+to be seperated from a group. This was expected, it is heterogenous disease after all, but now we see the way in 
+which the pathways affect the position of the samples, and we can see how certain samples are related to one
+another.
