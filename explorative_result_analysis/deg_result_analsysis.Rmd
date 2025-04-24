@@ -203,3 +203,20 @@ genes. Methylation of the area might help explain the differences we see in expr
 it is out the scope of this research, but we can point to the [following study](https://www.nature.com/articles/s41598-021-01324-0).
 The study shows that Sjogren associated differential methylated positions can be found within these genes. We find several
 other genes in this study that are showing up in our analysis as well. Amongst them are MX1, CMPK2, LY6E, HERC5, and RSAD2.
+
+## Vip variants
+
+Putting aside the results of PCA and just looking at the variants we find in VIP that we also find in the DEG, we can
+find four unique genes, amongst them the previously discuseed SIGLEC1 gene. 
+
+We discuss the rest of the found variants and their genes here.
+
+ANK1, two mutations found in one sample, not known to be related to Sjogren. Predicted to be pathogenic by VIP, but ClinVar
+estimates it to benign. Mutations in this gene have been known to be related to Spherocytosis, type 1 which is a disorder that
+effects red blood cells.
+
+PSMA3, one mutation found in one sample, is not known to be related to Sjogren specifically but does appear to be overexpressed in 
+[auto-immune diseases including Sjogren](https://pubmed.ncbi.nlm.nih.gov/12375310/).
+
+FCGBP, one mutation found in seven samples, and the gene has been found in [a study](https://pmc.ncbi.nlm.nih.gov/articles/PMC8809958/#abstract1) 
+that looked for SNPs related to Sjogren.
