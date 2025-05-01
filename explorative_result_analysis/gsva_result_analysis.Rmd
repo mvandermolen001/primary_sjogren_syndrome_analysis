@@ -17,7 +17,7 @@ see where the samples lay within the data space and how the different pathways e
 
 We can look at a PCA in two ways. We can look at all the found pathways, or we can look at the pathways that were significantly different between
 the control and the sjogren samples. The first option is highly dimensional, as over 900 pathways were found. The second option risks
-being too simplified, where we risk missing key components. Therefor we can look at both options.
+being too simplified, where we risk missing key components but should be better at seperating the samples from one another.
 
 We import the information gathered by the GSVA pathway analysis.
 
@@ -28,6 +28,8 @@ gsva_pathway_scores_sig <- read.csv(".\\data\\pathway_data\\sig_found_pathways.c
                                     row.names = 1)
 phenotype_data <- read.csv(".\\data\\group_to_id.csv")
 ```
+
+## PCA all pathways
 
 As PCA looks at the variance, highly correlated pathways will mean that one of those pathways doesn't bring new
 information into the PCA. We therefor choose to remove highly correlated pathways (>=0.95).
@@ -71,7 +73,7 @@ top_contrib <- rownames(contributions[order(contributions$contrib,
                                             decreasing = TRUE), ][1:10, ])
 ```
 
-When we plot the PCA, we see very little seperation from control to sjogren. This is likely because we are looking much at total 
+When we plot the PCA, we see very little seperation from control to sjogren. This is likely because we are looking at the total 
 variance, not so much the variance across the different groups. This means batch effects may play a greater role in these results.
 
 ```{r, fig.dim = c(8, 6)}
@@ -88,26 +90,33 @@ autoplot(res_pca_all_pathways, data = phenotype_data
   scale_x_continuous(expand = c(0.02, 0.02))
 ```
 
+The biggest 'contributing' pathway is the 'Vitamins A and D action mechanisms' pathways. This is the pathway depicts the way in which these vitamins are generated
+and their role in the activation of nuclear receptors. This pathway is not knonw to be related to Sjogren, but (Sjogren patients do appear to have lower levels of vitamin D
+compared to healthy controls)[https://pmc.ncbi.nlm.nih.gov/articles/PMC9920259/]. It should be taken into account that it is expected these values are quite variable regardless if someone
+suffers from Sjogren's or not.
+
+Another pathway that is slightly related to Sjogren that we see here but not in the significantly different pathways, is the 'Butyrate-induced histone acetylation'. This pathway 
+shows the metabolism of butyrate and it suggests that it to be an energy source for histone acetylation. (There is a study that appears to talk about how 
+butyrate producing bacteria in the human microbiome are signifcantly reduced in patients with Sjogren)[https://pmc.ncbi.nlm.nih.gov/articles/PMC11351188/#abstract1].
+
+One thing that is to be noted over all, is that the pathways found in the PCA are mostly metabolic pathways. With our data, it might be difficult to properly prove any 
+connections from these pathways to Sjogren. Taking that into account, (there is a study talking about the role of the metabolism in Sjogren's disease)[https://pubmed.ncbi.nlm.nih.gov/38149514/].
+Combined with these PCA results, we can at least say there is an interesting connection that could be further explored with additional data but is beyond the scope of
+this project.
+
+
+## PCA differentially expressed pathways
+
 For a similar look into the data, we can choose results that were filtered on significance already. This leaves
-a lot of details behind but it will give a good visualistion to go along with the heatmap created in the gsva
-analysis.
+a lot of details behind but it will give a good visualistion of where the samples stand in the 'data space' so to say.
+Giving us additiona insights as to which samples are more similar to others than others. 
 
 ```{r, fig.dim = c(8, 6)}
 gsva_matrix <- t(gsva_pathway_scores_sig)
-corr_matrix <- cor(gsva_matrix)
-
-correlated_values <- findCorrelation(corr_matrix, cutoff = 0.95)
-
-gsva_df <- as.data.frame(gsva_matrix[, -correlated_values])
-
-clust_obj <- hclust(dist(gsva_matrix), method = "average")
-
-cluster_groups <- cutree(clust_obj, k = 2)
-phenotype_data$cluster_id <- as.factor(cluster_groups)
 
 res_pca_sig_pathways <- prcomp(gsva_matrix, scale = FALSE, center = TRUE)
 
-autoplot(res_pca_sig_pathways, data = phenotype_data, 
+autoplot(res_pca_sig_pathways, data = phenotype_data,
          label = TRUE, label.label = "ID",
          label.colour = "group", loadings = TRUE, loadings.label = TRUE)
 ```
@@ -116,3 +125,11 @@ As expected, we see a better seperation of control and sjogren samples, but ther
 to be seperated from a group. This was expected, it is heterogenous disease after all, but now we see the way in 
 which the pathways affect the position of the samples, and we can see how certain samples are related to one
 another.
+
+We see more variance being explained with just one PCA, this too is to be expected as we are using only the pathways
+we have deemed 'of interest', when we look into the summary of the PCA. We can see we'd only need ten PCs to catch all
+the variance.
+
+```{r}
+summary(res_pca_sig_pathways)
+```
