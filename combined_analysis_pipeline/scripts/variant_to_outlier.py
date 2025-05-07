@@ -22,17 +22,17 @@ For a summary:
 
 To get a description of the arguments this script uses, please
 inform the help. That's done typing the following into the terminal:
-variant_to_outlier.py --help
+DNA_RNA_nextflow.py --help
 """
 
 import argparse
 
 
-def parse_variant_csv(file, found_genes, sample_id) -> None:
+def parse_variant_csv(file, found_genes) -> None:
     """
-    Function that parses an .csv file. The function assumes the gene symbol is found at index 6. 
-    It looks for genes found in the RNA expression and splicing outlier files and writes the genes that 
-    were found to an output.
+    Function that parses an .csv file. The function assumes the sample ID is found at
+    index 7, and the gene symbol is found at index 4. It looks for genes found in the RNA
+    expression and splicing outlier files and writes the genes that were found to an output.
 
     arguments:
     file = the .csv file that needs to be parsed where the sample ID is found in the eight column
@@ -41,23 +41,21 @@ def parse_variant_csv(file, found_genes, sample_id) -> None:
     linking_table = the path to the linking table file
     rna_dir = the path to the rna_directory
     """
-    output_name = f'{sample_id}_expression_splicing_outlier_output.csv'
     try:
-        with open(file, 'r', encoding="utf8") as csv_file,\
-            open(output_name, 'w+', encoding="utf8") as output:
+        with open(file, 'r', encoding="utf8") as csv_file:
             for line in csv_file:
                 csv_list = line.split(",")
                 gene = csv_list[6]
                 outrider, fraser = found_genes
                 if gene in fraser and outrider:
-                    output_line = f'{line.strip()},{"found in splicing and expression outliers"}\n'
-                    output.write(output_line)
+                    output_line = f'{line.strip()},{"found in splicing and expression outliers"}'
+                    print(output_line)
                 elif gene in fraser:
-                    output_line = f'{line.strip()},{"found in splicing outliers"}\n'
-                    output.write(output_line)
+                    output_line = f'{line.strip()},{"found in splicing outliers"}'
+                    print(output_line)
                 elif gene in outrider:
-                    output_line = f'{line.strip()},{"found expression outliers"}\n'
-                    output.write(output_line)
+                    output_line = f'{line.strip()},{"found expression outliers"}'
+                    print(output_line)
     except IOError as e:
         print("The file could not be opened. The following error occured:", e)
 
@@ -145,11 +143,10 @@ def main(args) -> None:
     """
     The main function controls the flow of the script
     """
-    print(args.sample_id, end="")
     found_genes = parse_linking_table(args.linking_table,
                                         args.sample_id, args.rna_directory)
     if found_genes:
-        parse_variant_csv(args.input, found_genes, args.sample_id)
+        parse_variant_csv(args.input, found_genes)
 
 
 if __name__ == "__main__":

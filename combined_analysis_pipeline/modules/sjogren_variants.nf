@@ -23,7 +23,7 @@ process getOutliers{
     tuple val(sample_id), path (variants_csv)
 
     output:
-    path ("*_outlier_output.csv"), optional: true
+    stdout
 
     script:
     """
@@ -64,14 +64,10 @@ workflow gatherAllVariants{
 
     main:
     getVariants(vip_vcf)
-    getOutliers(getVariants.out)
+    getOutliers(getVariants.out).collectFile(name: 'all_outlier_variants.csv', 
+                                                storeDir: params.output)
     getDifferential(getVariants.out).collectFile(name: 'all_differential_variants.csv', 
                                                 storeDir: params.output)
     getPathway(getVariants.out).collectFile(name: 'all_pathway_variants.csv', 
                                                 storeDir: params.output)
-
-
-
-    emit:
-    outliers_found = getOutliers.out
 }
