@@ -17,12 +17,13 @@ raw_counts <- read.csv(".\\data\\count_data\\merged_outrider_counts.txt",
 phenotype_data <- read.csv(".\\data\\group_to_id.csv")
 
 row.names(raw_counts) <- raw_counts$GeneID
-
+# Counts before editing = 60880
 raw_counts <- raw_counts[-c(1)]
 
-# Remove zero count rows
+# Remove zero count rows, counts after removal = 41907
 raw_counts <- raw_counts[rowSums(raw_counts) > 0, ]
-# # Remove genes where 75% of the samples have zero counts found
+# Remove genes where 75% of the samples have zero counts found
+# counts after = 26125
 raw_counts <- raw_counts[rowMeans(raw_counts == 0) <= 0.75, ]
 
 row.names(phenotype_data) <- phenotype_data$ID
@@ -90,7 +91,7 @@ top_contrib <- rownames(contributions[order(contributions$contrib,
 Finally, we can plot the results of the PCA and add the loadings. When interpreting this plot, keep in mind we only took
 the 1000 genes that had the most variance into account. This means the genes that did not show much variantion, but that could play a 
 role in differentiating sjogren from control patients could have been ignored. However, as we did do a differential expression analysis as
-well, these genes will come through there.
+well, these genes will come through there in further analysis of the data.
 
 ```{r, fig.cap = "A PCA plot, the first component on the x-axis and the second component on the y-axis. There's a seperation between the sjogren (blue) samples and the control (pink) samples, though not all samples are equally seperated."}
 loadings <- pca_res_blind$rotation[top_contrib, 1:2]
@@ -117,7 +118,7 @@ significant_counts <- normalized_counts[sig_gene_names, ]
 
 ## Heatmap
 
-For another visualisiton, simply to explore the data, a heatmap is created. As there many counted genes, we only create a heatmap using the significantly
+For another visualisiton, simply to explore the data, a heatmap is created. As there are many counted genes, we only create a heatmap using the significantly
 expressed genes. We can then see how the samples cluster together based on the expression of the genes. We except to see to see the same 
 pattern we find in the pathway analysis, a few controls clustering together very well but remaining controls mixing in with the sjogren samples.
 
@@ -164,7 +165,7 @@ Searching information on OMIM, we find the following:
 - Five out of the six genes that are either X-linked or Y-linked.
 - The gene that is not linked to either the X or Y chromosomes, MX1, is linked to a protein that combats viral infections.
 
-MX1 has been studied in relation to Sjogren's disease, and there is believe that it is associated with the disease. However, 
+MX1 [has been studied in relation to Sjogren's disease](https://pubmed.ncbi.nlm.nih.gov/31241661/), and there is believe that it is associated with the disease. However, 
 it is also seen in patients with other auto immune disease. As the controls are not healthy individuals and are instead taken from
 the immunology department of the UMCG, this could be a reason it did not show up as significant. 
 
