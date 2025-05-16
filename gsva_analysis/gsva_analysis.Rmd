@@ -151,6 +151,9 @@ this feature, but ggplot's plot are generally a little clearer. This can later b
 
 First hierarichal clustering is done, the distance method used here is eulcidean and the linkage method is average.
 ```{r, fig.dim = c(6, 8)}
+result_table <- topTable(fit, coef = 2)
+gsva_result_sig <- gsva_result[rownames(result_table), ]
+
 clust_obj <- hclust(dist(t(gsva_result_sig)), method = "average")
 plot(clust_obj)
 ```
@@ -162,7 +165,7 @@ Following such, the heatmap from base R is created. In both heatmaps, control sa
 the sjogren samples are given a green colour. The more up regulated a pathway is, the darker the red, the more down
 regulated a pathway is, the darker the blue.
 
-```{r, fig.dim = c(6, 8), fig.cap = "A base R eatmap displaying the samples and signifcant pathways found in the GSVA. Control samples are given a orange colour and the sjogren samples are given a green colour. The more up regulated a pathway is, the darker the red, the more downregulated a pathway is, the darker the blue."}
+```{r, fig.dim = c(6, 8), fig.cap = "A base R heatmap displaying the samples and signifcant pathways found in the GSVA. Control samples are given a orange colour and the sjogren samples are given a green colour. The more up regulated a pathway is, the darker the red, the more downregulated a pathway is, the darker the blue."}
 phenotype_data$colour <- "#008B33"
 phenotype_data$colour[phenotype_data$group == "sjogren"] <- "#e4a22f"
 col <- colorRampPalette(c("#005AB5", "white", "#DC3220"))(256)
@@ -179,8 +182,6 @@ For the ggplot heatmap, the data is transformed into a long format. Due to ggplo
 the samples by using the earlier created cluster object.
 
 ```{r}
-result_table <- topTable(fit, coef = 2)
-gsva_result_sig <- gsva_result[rownames(result_table), ]
 rownames(gsva_result_sig) <- gsub("\\%.*", "", rownames(gsva_result_sig))
 # Reorder by cluster
 gsva_result_sig <- gsva_result_sig[, clust_obj$order]
