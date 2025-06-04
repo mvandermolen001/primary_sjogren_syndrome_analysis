@@ -19,11 +19,11 @@ This repository contains the code used in the analysis the study 'Identifying me
 
 ## The analyses
 
-GSVA analysis and the explorative result analysis can be found in their respectful directory. 
-
-The GSVA analysis contains the steps that were done for this analysis, and some plotting of the results.
+GSVA analysis and the explorative result analysis can be found in their respectful directory. The GSVA analysis contains the steps that were done for this analysis, and some plotting of the results.
 
 The explorative result directory contains the results of a PCA done on the results of a differential gene expression analysis and the results of a PCA done on the results of the GSVA analsyis.
+
+A table of all the libraries used in these analyses can be found in the resources directory as the 'table_of_tools.png'
 
 ## Combined analysis pipeline
 
