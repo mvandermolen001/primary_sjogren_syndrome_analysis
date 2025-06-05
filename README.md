@@ -70,3 +70,6 @@ After making sure all the dependencies are installed correctly, you can run the 
 ```
 nextflow run sjogren_analysis.nf -c ./sjogren_config.cfg -profile [slurm OR local]
 ```
+
+## Data availability
+The data that is used in this study can be accessed upon request at the Rheumatology department of the UMCG.
